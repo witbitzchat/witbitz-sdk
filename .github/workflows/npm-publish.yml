@@ -1,0 +1,40 @@
+# Publish an SDK release to npm as @witbitz/sdk (tools/sdk-npm.mjs). Started by hand only: Actions → npm-publish → Run workflow →
+# the version (a folder sdk/<version>/ of this repository). npm's TRUSTED PUBLISHING: no token is stored anywhere —
+# npm accepts this run because the package's settings name this repository and this file (npm-publish.yml). Renaming this file
+# breaks publishing until the package's Trusted Publisher entry is added again under the new name.
+name: npm-publish
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The SDK version to publish (a folder sdk/<version>/)'
+        required: true
+permissions:
+  contents: read
+  id-token: write # npm's trusted publishing: the run proves who it is with GitHub's OIDC token (and npm signs its provenance)
+concurrency: { group: npm-publish, cancel-in-progress: false }
+jobs:
+  publish:
+    runs-on: ubuntu-latest # trusted publishing accepts GitHub-hosted runners only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: npm 11.5.1 or later (trusted publishing needs it)
+        run: npm install -g npm@^11.5.1 && npm --version
+      - name: Build the package from the release folder
+        env: { V: '${{ inputs.version }}' }
+        run: |
+          case "$V" in *[!0-9A-Za-z.-]*|'') echo "not a version: $V"; exit 1;; esac
+          [ -f "sdk/$V/manifest.json" ] || { echo "no release folder sdk/$V"; exit 1; }
+          node tools/sdk-npm.mjs "$V" --out "$RUNNER_TEMP/pkg"
+      - name: The package is the release, byte for byte
+        env: { V: '${{ inputs.version }}' }
+        run: |
+          node --test tools/sdk-npm.test.mjs
+          node tools/sdk-npm.mjs "$V" --check "$RUNNER_TEMP/pkg"
+      - name: Publish
+        working-directory: ${{ runner.temp }}/pkg
+        run: npm publish --access public
