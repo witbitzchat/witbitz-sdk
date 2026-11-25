@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // tools/sdk-npm.mjs — THE SDK ON npm, as `@witbitz/sdk`. The npm package of a version IS that version's release folder, sdk/<v>/ — the bytes
-// builders already load from https://witbitz-spaces.pages.dev/sdk/<v>/ — copied unchanged, plus three files that are only npm's:
+// builders already load from https://witbitz.chat/sdk/<v>/ — copied unchanged, plus three files that are only npm's:
 // package.json, README.md, LICENSE. Nothing is rebuilt: a release folder is immutable and held to its manifest.json
 // (by its own tests where it is made), and checkPackage below holds the package to the same manifest, file by file.
 //
@@ -47,7 +47,7 @@ export function packageJson (version, files) {
   return {
     name: NAME,
     version,
-    description: 'The Witbitz SDK: Spaces — end-to-end encrypted rooms with an AI assistant — in your own app. The same bytes as https://witbitz-spaces.pages.dev/sdk/' + version + '/',
+    description: 'The Witbitz SDK: Spaces — end-to-end encrypted rooms with an AI assistant — in your own app. The same bytes as https://witbitz.chat/sdk/' + version + '/',
     type: 'module',
     main: './witbitz-sdk.js',
     types: './witbitz-sdk.d.ts',
@@ -80,7 +80,7 @@ The guide: https://witbitz.chat/docs/sdk
 
 ## The same bytes as the hosted release
 
-Version ${version} of this package is the release folder https://witbitz-spaces.pages.dev/sdk/${version}/ unchanged (from commit
+Version ${version} of this package is the release folder https://witbitz.chat/sdk/${version}/ unchanged (from commit
 \`${commit}\`), plus this README, \`package.json\` and \`LICENSE\`. Its \`manifest.json\` lists the sha384 of every file; each file in the
 package matches it.
 `

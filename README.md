@@ -1,7 +1,7 @@
 # The Witbitz SDK — released versions
 
 This repository holds the released versions of the Witbitz SDK, exactly as they are served at
-`https://witbitz-spaces.pages.dev/sdk/<version>/`, and publishes each one to npm as
+`https://witbitz.chat/sdk/<version>/`, and publishes each one to npm as
 [`@witbitz/sdk`](https://www.npmjs.com/package/@witbitz/sdk).
 
 ```sh
@@ -29,7 +29,7 @@ A version on npm is this repository's `sdk/<version>/` folder and the same bytes
 
 ```sh
 npm pack @witbitz/sdk@<version> && tar xzf witbitz-sdk-<version>.tgz
-curl -sO https://witbitz-spaces.pages.dev/sdk/<version>/manifest.json
+curl -sO https://witbitz.chat/sdk/<version>/manifest.json
 diff package/manifest.json manifest.json && node -e "
 const m = require('./manifest.json'), c = require('crypto'), fs = require('fs')
 for (const [f, h] of Object.entries(m.files)) if ('sha384-' + c.createHash('sha384').update(fs.readFileSync('package/' + f)).digest('base64') !== h) throw f
