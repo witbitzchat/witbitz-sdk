@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Witbitz — Offline Space Decryptor</title>
+<style>
+  :root {
+    --bg:#f7f7f5; --card:#ffffff; --fg:#1a1a1f; --muted:#6b6b73; --line:#e5e5e0;
+    --accent:#2f7d5b; --accent-weak:#e7f2ec; --field:#f0f0ec; --warn:#8a5a00; --warn-bg:#fdf3df; --agent:#2f5d7d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161618; --card:#1f1f22; --fg:#ececef; --muted:#9a9aa2; --line:#2e2e33; --accent:#4bbd86;
+            --accent-weak:#17301f; --field:#2a2a2e; --warn:#e0b054; --warn-bg:#2c2410; --agent:#7db4dc; }
+  }
+  :root[data-theme="dark"] { --bg:#161618; --card:#1f1f22; --fg:#ececef; --muted:#9a9aa2; --line:#2e2e33; --accent:#4bbd86; --accent-weak:#17301f; --field:#2a2a2e; --warn:#e0b054; --warn-bg:#2c2410; --agent:#7db4dc; }
+  :root[data-theme="light"] { --bg:#f7f7f5; --card:#ffffff; --fg:#1a1a1f; --muted:#6b6b73; --line:#e5e5e0; --accent:#2f7d5b; --accent-weak:#e7f2ec; --field:#f0f0ec; --warn:#8a5a00; --warn-bg:#fdf3df; --agent:#2f5d7d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+         padding:max(20px,env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+  .wrap { max-width:760px; margin:0 auto; }
+  .back { display:inline-flex; align-items:center; gap:5px; margin-bottom:16px; padding:7px 12px 7px 9px; border-radius:999px;
+          border:1px solid var(--line); background:var(--card); color:var(--fg); text-decoration:none; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .back:hover { border-color:var(--accent); color:var(--accent); }
+  .back svg { width:16px; height:16px; }
+  header { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .lock { width:38px; height:38px; flex:0 0 auto; border-radius:10px; background:var(--accent-weak); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+  .lock svg { width:20px; height:20px; }
+  h1 { font-size:19px; margin:0; font-weight:700; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:13px; margin:2px 0 0; }
+  .offline-badge { display:inline-flex; align-items:center; gap:6px; margin:14px 0 22px; padding:7px 12px; border-radius:999px; background:var(--accent-weak); color:var(--accent); font-size:12.5px; font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .step-h { display:flex; align-items:baseline; gap:9px; font-weight:650; margin:0 0 4px; }
+  .step-n { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--field); color:var(--muted); font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+  .hint { color:var(--muted); font-size:12.5px; margin:2px 0 12px 31px; }
+  textarea, input[type=text], select { width:100%; font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:var(--field); color:var(--fg); border:1px solid var(--line); border-radius:9px; padding:10px 12px; }
+  textarea { min-height:64px; resize:vertical; }
+  select { font-family:inherit; }
+  .indent { margin-left:31px; }
+  label.filebtn { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:9px; border:1px dashed var(--line); background:var(--field); color:var(--fg); font-size:13.5px; font-weight:550; cursor:pointer; }
+  label.filebtn:hover { border-color:var(--accent); color:var(--accent); }
+  label.filebtn input { display:none; }
+  .fname { margin-left:31px; margin-top:8px; font-size:12.5px; color:var(--accent); font-weight:600; min-height:1em; }
+  .drop { margin-left:31px; margin-top:8px; border:1.5px dashed var(--line); border-radius:10px; padding:14px; text-align:center; color:var(--muted); font-size:12.5px; transition:.15s; }
+  .drop.over { border-color:var(--accent); background:var(--accent-weak); color:var(--accent); }
+  button.primary { display:block; width:100%; margin:4px 0 0; padding:14px; border:0; border-radius:11px; background:var(--accent); color:#fff; font-size:15.5px; font-weight:650; cursor:pointer; }
+  button.primary:disabled { opacity:.5; cursor:default; }
+  button.ghost { padding:9px 14px; border:1px solid var(--line); border-radius:9px; background:transparent; color:var(--fg); font-size:13.5px; font-weight:600; cursor:pointer; }
+  .warn { display:flex; gap:9px; background:var(--warn-bg); color:var(--warn); border-radius:10px; padding:10px 12px; font-size:12.5px; margin-top:12px; }
+  .warn svg { width:16px; height:16px; flex:0 0 auto; margin-top:1px; }
+  .status { margin:6px 0 0; text-align:center; font-size:13px; color:var(--muted); min-height:1.2em; }
+  .status.err { color:#c0392b; font-weight:600; }
+  @media (prefers-color-scheme: dark) { .status.err { color:#ff6b5b; } }
+  #out { margin-top:8px; }
+  .tx-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .tx-title { font-weight:700; font-size:16px; }
+  .tx-meta { color:var(--muted); font-size:12.5px; }
+  .tx-actions { display:flex; gap:8px; }
+  .msg { padding:10px 0; border-top:1px solid var(--line); }
+  .msg:first-child { border-top:0; }
+  .msg .who { font-weight:650; }
+  .msg.agent .who { color:var(--agent); }
+  .msg .ts { color:var(--muted); font-size:11.5px; font-weight:400; margin-left:8px; }
+  .msg .body { margin-top:3px; white-space:pre-wrap; word-wrap:break-word; }
+  .msg img { max-width:100%; border-radius:10px; margin-top:8px; display:block; }
+  .chip { display:inline-block; margin:6px 6px 0 0; padding:3px 9px; border-radius:7px; background:var(--field); color:var(--muted); font-size:12px; }
+  .hidden { display:none; }
+  footer { color:var(--muted); font-size:12px; margin-top:26px; line-height:1.6; }
+  footer code { background:var(--field); padding:1px 5px; border-radius:4px; font-size:11.5px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <button class="back hidden" id="backBtn" aria-label="Back to your Space">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Back to your Space
+  </button>
+  <header>
+    <span class="lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></span>
+    <div>
+      <h1>Offline Space Decryptor</h1>
+      <p class="sub">Read a Witbitz Space backup with your key — entirely on this device.</p>
+    </div>
+  </header>
+
+  <span class="offline-badge">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 13l4 4L19 7"></path></svg>
+    <span><b>No network.</b> Nothing you load here is ever uploaded — view source to verify.</span>
+  </span>
+
+  <div id="noCrypto" class="warn hidden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+    <span>This browser blocked local cryptography for a file opened directly. Open this file in <b>Firefox</b> or <b>Safari</b>, or open it from <code>witbitz-spaces.pages.dev/decrypt.html</code> (that page is egress-locked, so it still can’t send your data anywhere).</span>
+  </div>
+
+  <!-- STEP 1 — key(s) -->
+  <div class="card">
+    <div class="step-h"><span class="step-n">1</span> Your room key</div>
+    <p class="hint">Paste a key, or load a key file. A whole-account <code>witbitz-keys…txt</code> works too — it holds every key, and the right one is matched automatically.</p>
+    <div class="indent"><textarea id="mk" spellcheck="false" placeholder="paste the room key (mk) here…" rows="2"></textarea></div>
+    <div class="indent" style="margin-top:8px"><label class="filebtn">📄 Load key file<input type="file" id="mkFile" accept=".txt,text/plain"></label></div>
+    <div class="fname" id="mkFileName"></div>
+  </div>
+
+  <!-- STEP 2 — sealed ledger / bundle -->
+  <div class="card">
+    <div class="step-h"><span class="step-n">2</span> Your sealed conversation</div>
+    <p class="hint">Load a <code>…-ledger.json</code>, or a whole-account <code>witbitz-spaces…json</code> backup (it holds only ciphertext).</p>
+    <div class="indent"><label class="filebtn">🔒 Load sealed backup<input type="file" id="ledFile" accept=".json,application/json"></label></div>
+    <div class="drop" id="drop">…or drag the sealed file here</div>
+    <div class="fname" id="ledName"></div>
+    <div class="indent hidden" id="spaceRow" style="margin-top:10px">
+      <label style="font-size:12.5px;color:var(--muted);font-weight:600;display:block;margin-bottom:5px">Which conversation</label>
+      <select id="spacePicker"></select>
+    </div>
+  </div>
+
+  <button class="primary" id="go" disabled>Decrypt &amp; read</button>
+  <div class="status" id="status"></div>
+
+  <div id="out" class="hidden">
+    <div class="card">
+      <div class="tx-head">
+        <div><div class="tx-title" id="txTitle">Conversation</div><div class="tx-meta" id="txMeta"></div></div>
+        <div class="tx-actions">
+          <button class="ghost" id="saveTxt">Save .txt</button>
+          <button class="ghost" id="saveHtml">Save .html</button>
+        </div>
+      </div>
+      <div id="transcript"></div>
+    </div>
+  </div>
+
+  <div class="warn" style="margin-top:14px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+    <span>Keep your <b>keys</b> and your <b>sealed backup</b> in separate places. Anyone who has both can read the chats; the sealed files alone are unreadable without the keys.</span>
+  </div>
+
+  <div style="margin-top:16px;text-align:center">
+    <button class="ghost" id="saveSelf">⤓ Save this decryptor for offline use</button>
+  </div>
+
+  <footer>
+    <p><b>How this works.</b> Witbitz stores your conversations as ciphertext it cannot read. Your keys live in your Space links and on your device. On the Confidential tier they reach our servers only sealed to a verified enclave; on the standard tier they are sent with each agent turn, so the stored record is unreadable from the store but the turn itself is handled in the clear. This page rebuilds the exact decryption the app uses (HKDF-SHA-256 → AES-256-GCM) with your browser’s built-in cryptography, with no network access. Save this file, your keys, and your sealed backup, and you can read your data forever — even if Witbitz is gone.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict'
+  const enc = new TextEncoder(), dec = new TextDecoder()
+  const $ = (id) => document.getElementById(id)
+  const subtle = window.crypto && window.crypto.subtle
+  if (!subtle) $('noCrypto').classList.remove('hidden')
+
+  // BACK — a standalone PWA has no browser chrome, so a navigation here would strand the reader. Hidden for a local
+  // file:// copy (the tool IS the destination — nowhere in the app to return to).
+  if (location.protocol !== 'file:') {
+    const back = $('backBtn'); back.classList.remove('hidden')
+    back.addEventListener('click', () => { if (history.length > 1) history.back(); else location.assign('/space') })
+  }
+
+  // ── crypto: a faithful inline port of spaces/public/e2ee.js open() (the mk / symmetric-envelope path) ──
+  function ub64(str) {
+    let s = String(str || '').replace(/-/g, '+').replace(/_/g, '/'); s += '='.repeat((4 - (s.length % 4)) % 4)
+    const bin = atob(s), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out
+  }
+  async function roomWrapKey(mk) {
+    const ikm = await subtle.importKey('raw', ub64(mk), 'HKDF', false, ['deriveKey'])
+    return subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: enc.encode('memwrap') }, ikm, { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
+  }
+  function isEnvelope(o) {
+    return !!(o && typeof o === 'object' && o.v === 1 && typeof o.iv === 'string' && typeof o.ct === 'string' &&
+      o.recipients && typeof o.recipients === 'object' && Object.values(o.recipients).some((r) => r && typeof r.iv === 'string' && typeof r.w === 'string'))
+  }
+  async function openEnv(env, wk, aad) {
+    if (!isEnvelope(env)) return null
+    if (env.aad && !aad) return null // a BOUND ledger box (aad:1) opens only with its {room, index} — as e2ee.js open()
+    for (const slot of Object.keys(env.recipients)) {
+      const r = env.recipients[slot]; if (!r || typeof r.iv !== 'string' || typeof r.w !== 'string') continue
+      try {
+        const cek = new Uint8Array(await subtle.decrypt({ name: 'AES-GCM', iv: ub64(r.iv) }, wk, ub64(r.w)))
+        const cekKey = await subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['decrypt'])
+        const p = { name: 'AES-GCM', iv: ub64(env.iv) }; if (env.aad) p.additionalData = aad
+        return dec.decode(new Uint8Array(await subtle.decrypt(p, cekKey, ub64(env.ct))))
+      } catch (e) { /* wrong slot → next, else fail closed */ }
+    }
+    return null
+  }
+  // M4 (since 2026-08-29): a v3 box is BOUND to its Space and its absolute position — AES-GCM additional data
+  // 'v3<US><room><US><index>', byte-identical to e2ee.js ledgerAad. Without it every bound box fails, so the reader needs the
+  // Space's id: from the ledger file (`room`), the bundle's sealed name card, the keys file's rows, or a pasted Space link.
+  const ledgerAad = (room, index) => enc.encode('v3\x1f' + String(room) + '\x1f' + String(index))
+  // v1 = bare array whole-sealed; v2 = {v,entries} whole-sealed; v3 = { v:3, boxes:[<per-entry sealed string>], from }.
+  async function decryptLedger(ledger, mk, rooms, otherKeys = []) {
+    const wk = await roomWrapKey(mk)
+    if (ledger && Array.isArray(ledger.boxes)) {
+      const entries = []; let opened = 0, bound = 0, room = null
+      const base = Number(ledger.from) || 0, cands = [...new Set([ledger.room, ...(rooms || [])].filter(Boolean).map(String))]
+      const usable = [wk], previous = new Set(otherKeys.filter(k => k !== mk))
+      if (ledger.keyHistory) {
+        const raw = await openEnv(ledger.keyHistory, wk)
+        if (raw) {
+          const history = JSON.parse(raw)
+          if (typeof history.room === 'string' && (!cands.length || cands.includes(history.room)) && Array.isArray(history.keys)) {
+            if (!cands.includes(history.room)) cands.push(history.room)
+            for (const key of history.keys) if (typeof key === 'string' && key !== mk) previous.add(key)
+          }
+        }
+      }
+      for (const key of previous) { try { usable.push(await roomWrapKey(key)) } catch { /* malformed key */ } }
+      for (let j = 0; j < ledger.boxes.length; j++) {
+        let env; try { env = typeof ledger.boxes[j] === 'string' ? JSON.parse(ledger.boxes[j]) : ledger.boxes[j] } catch (e) { continue }
+        let s = null
+        if (env && env.aad) {
+          bound++
+          for (const r of (room ? [room] : cands)) {
+            for (const key of usable) { s = await openEnv(env, key, ledgerAad(r, base + j)); if (s != null) break }
+            if (s != null) { room = r; break }
+          }
+        } else for (const key of usable) { s = await openEnv(env, key); if (s != null) break }
+        if (s == null) continue; opened++; try { entries.push(JSON.parse(s)) } catch (e) {}
+      }
+      return { entries, opened, total: ledger.boxes.length, v3: true, needsRoom: bound > 0 && !room && !cands.length }
+    }
+    const s = await openEnv(ledger, wk); if (s == null) return { entries: null, v3: false }
+    let p; try { p = JSON.parse(s) } catch (e) { return { entries: null, v3: false } }
+    return { entries: Array.isArray(p) ? p : (p && Array.isArray(p.entries) ? p.entries : null), v3: false }
+  }
+
+  // ── render ──
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+  const fmtTs = (ts) => { const n = Number(ts); if (!Number.isFinite(n) || n <= 0) return ''; try { return new Date(n).toLocaleString() } catch (e) { return '' } }
+  let lastEntries = null, lastTitle = 'Conversation'
+  const looksLikeAgent = (e) => { const n = String((e && e.name) || '').toLowerCase(); return e && (e.agent === true || n === 'assistant' || n === 'agent') }
+
+  function render(entries, title) {
+    lastEntries = entries; lastTitle = title || 'Conversation'
+    $('txTitle').textContent = lastTitle
+    const times = entries.map((e) => Number(e && e.ts)).filter((n) => Number.isFinite(n) && n > 0)
+    const range = times.length ? `${new Date(Math.min(...times)).toLocaleDateString()} – ${new Date(Math.max(...times)).toLocaleDateString()}` : ''
+    $('txMeta').textContent = `${entries.length} message${entries.length === 1 ? '' : 's'}${range ? ' · ' + range : ''}`
+    const t = $('transcript'); t.innerHTML = ''
+    for (const e of entries) {
+      if (!e || typeof e !== 'object') continue
+      const row = document.createElement('div'); row.className = 'msg' + (looksLikeAgent(e) ? ' agent' : '')
+      let html = `<div><span class="who">${esc(e.name || 'Unknown')}</span><span class="ts">${esc(fmtTs(e.ts))}</span></div>`
+      if (e.text) html += `<div class="body">${esc(e.text)}</div>`
+      row.innerHTML = html
+      for (const im of (Array.isArray(e.images) ? e.images : [])) { if (im && im.b64 && im.mime) { const img = document.createElement('img'); img.src = `data:${im.mime};base64,${im.b64}`; img.alt = im.name || 'image'; row.appendChild(img) } }
+      for (const f of (Array.isArray(e.files) ? e.files : [])) { const c = document.createElement('span'); c.className = 'chip'; c.textContent = '📎 ' + ((f && f.name) || 'file'); row.appendChild(c) }
+      for (const w of (Array.isArray(e.widgets) ? e.widgets : [])) { const c = document.createElement('span'); c.className = 'chip'; c.textContent = '▦ ' + ((w && (w.title || w.kind)) || 'widget'); row.appendChild(c) }
+      t.appendChild(row)
+    }
+    $('out').classList.remove('hidden'); $('out').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // ── inputs ──
+  let ledgerText = '', keyFileText = '', bundle = null, bundleTitles = [], singleLedger = null, singleTitle = 'Conversation'
+  // Extract candidate keys from pasted text OR a whole keys.txt (a room key is 32 bytes → 43 base64url chars).
+  const keysFrom = (txt) => [...new Set((String(txt || '').match(/[A-Za-z0-9_-]{40,64}/g) || []))]
+  const allKeys = () => keysFrom($('mk').value + '\n' + keyFileText)
+  // The Space ids the reader was given: a keys file's rows (title<TAB>room<TAB>key), and a pasted Space link's room=.
+  function roomsFrom(txt) {
+    const out = [], t = String(txt || '')
+    for (const line of t.split(/\r?\n/)) { const c = line.split('\t'); if (c.length >= 3 && c[1].trim()) out.push(c[1].trim()) }
+    for (const m of t.matchAll(/[?&#]room=([A-Za-z0-9_.~-]+)/g)) out.push(decodeURIComponent(m[1]))
+    return [...new Set(out)]
+  }
+  const allRooms = () => roomsFrom($('mk').value + '\n' + keyFileText)
+  // a keys-file row's room for THIS key first, then every other room the reader was given
+  const roomsForKey = (key) => { const t = $('mk').value + '\n' + keyFileText, own = []; for (const line of t.split(/\r?\n/)) { const c = line.split('\t'); if (c.length >= 3 && c[2].trim() === key && c[1].trim()) own.push(c[1].trim()) } return [...new Set([...own, ...allRooms()])] }
+  const bundleRooms = [] // per bundle entry: the room id its sealed name card holds (opened with a key)
+  function refreshGo() { $('go').disabled = !((($('mk').value.trim()) || keyFileText.trim()) && ledgerText.trim()); resolveTitles() }
+  $('mk').addEventListener('input', refreshGo)
+
+  // A v2 whole-account bundle seals its per-Space metadata, so the picker can only show real names once keys are
+  // loaded — that is the point: the file alone names nothing. Resolve lazily (trial-open each sealed meta with every
+  // key held, same as decryption itself does) and relabel in place; until then the options read "Conversation N".
+  // v1 bundles carry plaintext titles and fall straight through labelFor without any of this.
+  const labelFor = (s, i) => bundleTitles[i] || (s && (s.title || s.room)) || ('Conversation ' + (i + 1))
+  let resolving = false
+  async function resolveTitles() {
+    if (resolving || !bundle || !Array.isArray(bundle.spaces)) return
+    const keys = allKeys(); if (!keys.length) return
+    if (bundle.spaces.every((s, i) => (bundleTitles[i] && bundleRooms[i]) || !(s && s.meta))) return // nothing left to open
+    resolving = true
+    try {
+      const wks = []
+      for (const k of keys) { try { wks.push(await roomWrapKey(k)) } catch (e) { /* not a usable key → skip */ } }
+      let changed = false
+      for (let i = 0; i < bundle.spaces.length; i++) {
+        const s = bundle.spaces[i]
+        if ((bundleTitles[i] && bundleRooms[i]) || !s || !s.meta) continue
+        for (const wk of wks) {
+          const txt = await openEnv(s.meta, wk)
+          if (txt == null) continue // wrong key for this Space → try the next
+          try { const m = JSON.parse(txt); if (m && m.room) bundleRooms[i] = m.room; if (m && m.title) { bundleTitles[i] = m.title; changed = true } } catch (e) { /* */ }
+          break
+        }
+      }
+      if (changed) { const sel = $('spacePicker'); for (let i = 0; i < sel.options.length; i++) sel.options[i].textContent = labelFor(bundle.spaces[i], i) }
+    } finally { resolving = false }
+  }
+
+  const readFile = (file, cb) => { const r = new FileReader(); r.onload = () => cb(String(r.result || '')); r.readAsText(file) }
+  $('mkFile').addEventListener('change', (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) readFile(f, (txt) => { keyFileText = txt; const n = keysFrom(txt).length; $('mkFileName').textContent = n ? `✓ ${n} key${n === 1 ? '' : 's'} loaded from ${f.name}` : '✓ loaded (no key found?)'; refreshGo() }) })
+
+  function setLedger(txt, name) {
+    ledgerText = txt; $('ledName').textContent = name ? '✓ ' + name : ''
+    bundle = null; bundleTitles = []; bundleRooms.length = 0; singleLedger = null; singleTitle = (name || 'Conversation').replace(/\.(witbitz-)?ledger\.json$/i, '').replace(/\.json$/i, '') || 'Conversation'
+    let parsed = null; try { parsed = JSON.parse(txt) } catch (e) {}
+    if (parsed && Array.isArray(parsed.spaces)) {
+      bundle = parsed
+      const sel = $('spacePicker'); sel.innerHTML = ''
+      bundle.spaces.forEach((s, i) => { const o = document.createElement('option'); o.value = String(i); o.textContent = labelFor(s, i); sel.appendChild(o) })
+      $('spaceRow').classList.remove('hidden')
+      $('ledName').textContent = `✓ ${name || 'backup'} — ${bundle.spaces.length} conversation${bundle.spaces.length === 1 ? '' : 's'}`
+    } else {
+      singleLedger = parsed; $('spaceRow').classList.add('hidden')
+    }
+    refreshGo()
+  }
+  $('ledFile').addEventListener('change', (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) readFile(f, (txt) => setLedger(txt, f.name)) })
+  const drop = $('drop')
+  ;['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over') }))
+  ;['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over') }))
+  drop.addEventListener('drop', (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) readFile(f, (txt) => setLedger(txt, f.name)) })
+
+  const status = (msg, err) => { const s = $('status'); s.textContent = msg || ''; s.className = 'status' + (err ? ' err' : '') }
+
+  $('go').addEventListener('click', async () => {
+    status('Decrypting…'); $('out').classList.add('hidden')
+    const keys = allKeys()
+    if (!keys.length) return status('Paste your key, or load a key file.', true)
+    let target = null, title = 'Conversation', idx = -1
+    if (bundle) { await resolveTitles(); idx = Number($('spacePicker').value) || 0
+      const i = Number($('spacePicker').value) || 0, s = bundle.spaces[i]
+      if (!s) return status('Pick a conversation.', true)
+      title = labelFor(s, i); target = s.ledger
+      if (typeof target === 'string') { try { target = JSON.parse(target) } catch (e) { return status('That conversation entry is malformed.', true) } }
+    } else { target = singleLedger; title = singleTitle }
+    if (!target) return status('Load a sealed conversation first.', true)
+    let needsRoom = false
+    let best = null
+    for (const key of keys) {
+      try {
+        const rooms = [...(idx >= 0 && bundleRooms[idx] ? [bundleRooms[idx]] : []), ...roomsForKey(key)]
+        const { entries, opened, total, v3, needsRoom: nr } = await decryptLedger(target, key, rooms, keys.filter(k => roomsForKey(k).some(r => rooms.includes(r)) || !roomsForKey(k).length))
+        if (nr) needsRoom = true
+        if (entries != null && (!v3 || opened === total)) { render(entries, title); return status(`Read ${entries.length} message${entries.length === 1 ? '' : 's'}.`) }
+        if (opened && (!best || opened > best.opened)) best = { entries, opened, total }
+      } catch (e) { /* try the next key */ }
+    }
+    if (best) { render(best.entries, title); return status(`Read ${best.opened} of ${best.total} messages (${best.total - best.opened} could not be opened).`) }
+    if (needsRoom) return status('This conversation is tied to its Space. Load the keys file from the same backup, or paste the Space’s link beside the key, then try again.', true)
+    status(keys.length > 1 ? 'Couldn’t decrypt — none of the keys provided match this conversation.' : 'Couldn’t decrypt — the key doesn’t match this conversation (or it isn’t a Witbitz ledger).', true)
+  })
+
+  // ── saving ──
+  function download(name, text, mime) {
+    const url = URL.createObjectURL(new Blob([text], { type: mime || 'text/plain;charset=utf-8' }))
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000)
+  }
+  const safeName = (t) => (t || 'conversation').replace(/[^\wÀ-￿.-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'conversation'
+  function transcriptText() {
+    if (!lastEntries) return ''
+    return lastEntries.map((e) => {
+      const who = (e && e.name) || 'Unknown', ts = fmtTs(e && e.ts)
+      const extra = [].concat((e && e.images || []).map(() => '[image]'), (e && e.files || []).map((f) => '[file: ' + ((f && f.name) || '') + ']')).join(' ')
+      return `${ts ? '[' + ts + '] ' : ''}${who}: ${(e && e.text) || ''}${extra ? ' ' + extra : ''}`
+    }).join('\n')
+  }
+  $('saveTxt').addEventListener('click', () => download(safeName(lastTitle) + '.txt', transcriptText(), 'text/plain;charset=utf-8'))
+  $('saveHtml').addEventListener('click', () => {
+    const body = $('transcript').innerHTML
+    download(safeName(lastTitle) + '.html', `<!doctype html><meta charset=utf-8><title>${esc(lastTitle)}</title><style>body{font:15px/1.5 -apple-system,system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px}.msg{padding:10px 0;border-top:1px solid #eee}.who{font-weight:650}.ts{color:#888;font-size:11.5px;margin-left:8px}.body{white-space:pre-wrap;margin-top:3px}img{max-width:100%;border-radius:10px;margin-top:8px;display:block}.chip{display:inline-block;margin:6px 6px 0 0;padding:3px 9px;border-radius:7px;background:#f0f0ec;color:#666;font-size:12px}</style><h2>${esc(lastTitle)}</h2>${body}`, 'text/html;charset=utf-8')
+  })
+  $('saveSelf').addEventListener('click', () => download('witbitz-offline-decryptor.html', '<!doctype html>\n' + document.documentElement.outerHTML, 'text/html;charset=utf-8'))
+})();
+</script>
+</body>
+</html>
